@@ -81,8 +81,16 @@ int main(int argc, char *argv[]) {
     }
 
     if (numeric_sort || show_pids) {
-        build_process_tree(processes[1], 0, show_pids, numeric_sort);
+        build_process_tree();
+        //设 pid 为 1 的进程是树的根
+        if (processes[1]) {
+            print_process_tree(processes[1], 0, show_pids, numeric_sort);
+        } else {
+            printf(stderr, "processes[1] is not found");
+            exit(EXIT_FAILURE);
+        }   
     }
+    return 0;
 }
 
 //构建进程树 fill processes-array 
