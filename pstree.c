@@ -107,6 +107,7 @@ void build_process_tree() {
     closedir(dp);
 }
 
+
 //处理读到的信息
 void handle_process(int pid, int ppid, char *name) {//储存到指针数组processes中
     //cheak processes[pid] is created
@@ -128,7 +129,62 @@ void handle_process(int pid, int ppid, char *name) {//储存到指针数组proce
 //打印进程树
 //recursively print a process tree with indentation based on hierarchy levels,
 // showing process IDs if requested, and optionally sorting child processes by their PID:
+void print_process_tree(process_t *proc, int level, int slow_pids, int numeric_sort) {
+    //层次结构
+    for (int i = 0; i < level; i++) {
+        print("  ");
+    }
 
+    if (slow_pids) {
+        printf("%s (%d)\n", proc->name, proc->pid);
+        //	()：这两个圆括号是普通字符，将被直接输出到最终结果中，通常用于在视觉上区分或突出显示数值。
+    } else {
+        printf("%s", proc->name);
+    } 
+
+    //collect kids
+    process_t *sorted_children[1024] = {0};
+    int count = 0;
+    for (process_t *child = proc->children; child; child = child->next_sibling) {
+        sorted_children[count++] = child; 
+    }
+
+    if (numeric_sort) {//sort
+        quicksort(sorted_children, 0, count - 1);
+    }
+
+    //打印子进程
+    for (int i = 0; i < count; i++) {
+        print_process_tree(sorted_children, level + 1, slow_pids, numeric_sort);
+    }
+
+}
+
+void quicksort(process_t **arr, int left, int right) {
+    if (left > right) {
+        return;
+    }
+    int pivot = arr[right]->pid;
+    int i = left;
+    int j = right -1;//right 元素为pivot
+
+    while (i <= j) {
+        //find two change position
+        while(i <= j && arr[i]->pid <= pivot) {
+            i++;
+        }
+        while(i <= j && arr[j]->pid > pivot) {
+            j--;
+        }
+        if (i < j) {
+            process_t *temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+            quicksort(arr, 0, i -1);
+            quicksort(arr, i + 1, j);
+        } 
+    }
+}
 
 //打印版本信息
 void print_version() {
