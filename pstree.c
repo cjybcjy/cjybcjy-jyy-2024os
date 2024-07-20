@@ -7,6 +7,8 @@
 #include <string.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <ctype.h> //包含此头文件以使用 isdigit()
+
 
 //定义进程结构体
 //孩子兄弟表示法可以呈现二叉树的形态
@@ -43,7 +45,7 @@ process_t *create_process(int pid, int ppid, const char *name) {
 }
 
 //获取/proc目录
-void parse_information(const char *path, int *pid, int *ppid, const char *name) {
+void parse_information(const char *path, int *pid, int *ppid, char *name) {
     FILE *fd = fopen (path,  "r");
     if (fd) {
         //proc目录文件格式：pid (process name) state ppid ...
@@ -86,8 +88,9 @@ void build_process_tree() {
         if (entry->d_type == DT_DIR && isdigit(entry->d_name[0])) {//directories named with digits correspond to process IDs
             int pid, ppid;
             char name[256];
-            char stat_path[256];
-            snprintf(stat_path, "/pro/%s/statue", entry->d_name);//读取到缓冲区
+            char stat_path[512];
+            snprintf(stat_path, sizeof(stat_path), "/pro/%s/stat", entry->d_name);//读取到缓冲区
+            //固定文本 /proc/ 和 /stat 总共占用 11 字节。允许 entry->d_name 使用最多 248 字节。加上字符串结束符 \0,总长度最大为 260 字节，确保在修改后的 512 字节缓冲区内安全。
             parse_information(stat_path, &pid, &ppid, name);
         //建立数据结构
             handle_process(pid, ppid, name);
@@ -152,7 +155,7 @@ void print_process_tree(process_t *proc, int level, int slow_pids, int numeric_s
 
     //打印子进程
     for (int i = 0; i < count; i++) {
-        print_process_tree(sorted_children, level + 1, slow_pids, numeric_sort);
+        print_process_tree(*sorted_children, level + 1, slow_pids, numeric_sort);
     }
 
 }
@@ -178,7 +181,7 @@ int main(int argc, char *argv[]) {
     //     } else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-V") == 0) {
     //         version = 1;
     //     } else {
-    //         printf(stderr, "Usage: %s [--show-pids] [--numeric-sort] [--version]\n", argv[0]);//argv[0] is name of process
+    //         fprintf(stderr, "Usage: %s [--show-pids] [--numeric-sort] [--version]\n", argv[0]);//argv[0] is name of process
     //         //标准错误输出，Print instructions for use
     //         exit(EXIT_FAILURE);
     //         //When you call exit, it causes the program to finish, returning control to the operating system. 
@@ -206,7 +209,7 @@ int main(int argc, char *argv[]) {
             version = 1;
             break;
         default:
-            printf(stderr, "usage: %s [-p] [-n] [-V\n]", argv[0]);
+            fprintf(stderr, "usage: %s [-p] [-n] [-V\n]", argv[0]);//想向标准错误是 FILE* 类型（stderr类型）输出信息，应该使用 fprintf 而不是 printf。
             exit(EXIT_FAILURE);
             break;
         }
@@ -223,7 +226,7 @@ int main(int argc, char *argv[]) {
         if (processes[1]) {
             print_process_tree(processes[1], 0, show_pids, numeric_sort);
         } else {
-            printf(stderr, "processes[1] is not found");
+            fprintf(stderr, "processes[1] is not found");
             exit(EXIT_FAILURE);
         }   
     }
